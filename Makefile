@@ -1,7 +1,7 @@
 # Go Binary & App Variables
 APP_NAME := api-server
 MAIN_PATH := ./cmd/api
-GO ?= /opt/homebrew/bin/go
+GO ?= go
 
 .PHONY: all build run test clean tidy
 
