@@ -34,21 +34,19 @@ func main() {
 		if err != nil {
 			log.Printf("⚠️ Could not connect to MongoDB at %s (%v)", cfg.MongoURI, err)
 			log.Println("ℹ️ Falling back to In-Memory Project Repository")
-			projectRepo = repository.NewInMemoryProjectRepository()
+
 		} else {
 			mongoClient = client
 			coll := client.Database(cfg.MongoDBName).Collection(cfg.MongoProjectsColl)
 			cachedRepo, err := repository.NewCachedMongoProjectRepository(coll, 10*time.Minute)
 			if err != nil {
 				log.Printf("⚠️ Failed to init cached mongo repository: %v", err)
-				projectRepo = repository.NewInMemoryProjectRepository()
+
 			} else {
 				log.Printf("🗄️ Connected to MongoDB (%s / %s)", cfg.MongoDBName, cfg.MongoProjectsColl)
 				projectRepo = cachedRepo
 			}
 		}
-	} else {
-		projectRepo = repository.NewInMemoryProjectRepository()
 	}
 
 	contactRepo := repository.NewInMemoryContactRepository()

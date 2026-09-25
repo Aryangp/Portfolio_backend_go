@@ -16,6 +16,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type ProjectRepository interface {
+	GetAll(category, tag string, featured *bool) ([]model.Project, error)
+}
+
+var ErrProjectNotFound error = fmt.Errorf("project not found")
+
 // CachedMongoProjectRepository provides a high-performance in-memory cached view over a MongoDB projects collection.
 // All read queries are served directly from memory; on a cache miss or expiration, the complete project set is fetched from MongoDB.
 type CachedMongoProjectRepository struct {
