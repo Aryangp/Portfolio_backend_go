@@ -14,6 +14,7 @@ import (
 	"portfolio-backend/internal/config"
 	"portfolio-backend/internal/repository"
 	"portfolio-backend/internal/router"
+	"portfolio-backend/internal/tools"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -49,18 +50,36 @@ func main() {
 		}
 	}
 
-	contactRepo := repository.NewInMemoryContactRepository()
+	// 3. Initialize Dynamic Tool Registry
+	toolRegistry := tools.NewRegistry()
+	ghClient := tools.NewGitHubClient(cfg.GitHubToken)
+	toolRegistry.RegisterAll(tools.NewGitHubTools(ghClient, cfg.GitHubUsername)...)
+	log.Printf("🛠️ Registered %d AI tools: %v", len(toolRegistry.ListNames()), toolRegistry.ListNames())
+
+	// 4. Initialize Gemini Chat Repository if API Key is configured
+	var chatRepo repository.ChatRepository
+	if cfg.GeminiAPIKey != "" {
+		geminiRepo, err := repository.NewGeminiChatRepository(context.Background(), cfg.GeminiAPIKey, cfg.GeminiModel, toolRegistry)
+		if err != nil {
+			log.Printf("⚠️ Failed to initialize Gemini chat client: %v", err)
+		} else {
+			log.Printf("🤖 Gemini AI Chatbot ready (model: %s)", cfg.GeminiModel)
+			chatRepo = geminiRepo
+		}
+	} else {
+		log.Println("ℹ️ Gemini API key not set; chatbot running in offline mode")
+	}
 
 	// 3. Initialize HTTP router
-	appRouter := router.New(cfg, projectRepo, contactRepo)
+	appRouter := router.New(cfg, projectRepo, chatRepo)
 
 	// 4. Configure HTTP Server
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)
 	srv := &http.Server{
 		Addr:         serverAddr,
 		Handler:      appRouter,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 60 * time.Second, // Increased for long-lived SSE streaming responses
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -72,6 +91,7 @@ func main() {
 		log.Printf("🌐 Environment:  %s", cfg.AppEnv)
 		log.Printf("🩺 Health Check: http://localhost:%s/api/v1/health", cfg.Port)
 		log.Printf("📂 Projects API: http://localhost:%s/api/v1/projects", cfg.Port)
+		log.Printf("🤖 AI Chatbot:   http://localhost:%s/api/v1/chat/stream", cfg.Port)
 		log.Printf("==================================================")
 
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -89,6 +109,10 @@ func main() {
 	// 7. Context with timeout for shutdown completion
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	if chatRepo != nil {
+		_ = chatRepo.Close()
+	}
 
 	if mongoClient != nil {
 		if err := mongoClient.Disconnect(ctx); err != nil {

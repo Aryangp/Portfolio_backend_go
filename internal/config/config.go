@@ -13,6 +13,10 @@ type Config struct {
 	MongoURI          string
 	MongoDBName       string
 	MongoProjectsColl string
+	GeminiAPIKey      string
+	GeminiModel       string
+	GitHubUsername    string
+	GitHubToken       string
 }
 
 // Load loads configuration from environment variables (or .env file) with fallback defaults
@@ -44,6 +48,20 @@ func Load() *Config {
 		mongoProjectsColl = "projects"
 	}
 
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+
+	geminiModel := os.Getenv("GEMINI_MODEL")
+	if geminiModel == "" {
+		geminiModel = "gemini-1.5-flash"
+	}
+
+	githubUsername := os.Getenv("GITHUB_USERNAME")
+	if githubUsername == "" {
+		githubUsername = "Aryangp"
+	}
+
+	githubToken := os.Getenv("GITHUB_TOKEN")
+
 	allowedOriginsEnv := os.Getenv("ALLOWED_ORIGINS")
 	var allowedOrigins []string
 	if allowedOriginsEnv == "" || allowedOriginsEnv == "*" {
@@ -64,6 +82,10 @@ func Load() *Config {
 		MongoURI:          mongoURI,
 		MongoDBName:       mongoDBName,
 		MongoProjectsColl: mongoProjectsColl,
+		GeminiAPIKey:      geminiAPIKey,
+		GeminiModel:       geminiModel,
+		GitHubUsername:    githubUsername,
+		GitHubToken:       githubToken,
 	}
 }
 

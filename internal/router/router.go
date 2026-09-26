@@ -13,13 +13,12 @@ import (
 func New(
 	cfg *config.Config,
 	projectRepo repository.ProjectRepository,
-	contactRepo repository.ContactRepository,
+	chatRepo repository.ChatRepository,
 ) http.Handler {
 	mux := http.NewServeMux()
-
 	healthH := handler.NewHealthHandler(cfg)
 	projectH := handler.NewProjectHandler(projectRepo)
-	contactH := handler.NewContactHandler(contactRepo)
+	chatH := handler.NewChatHandler(chatRepo)
 
 	// Root index endpoint
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
@@ -31,25 +30,18 @@ func New(
 			"endpoints": {
 				"health": "GET /api/v1/health",
 				"projects": "GET /api/v1/projects",
-				"project_by_id": "GET /api/v1/projects/{id}",
-				"create_project": "POST /api/v1/projects",
-				"update_project": "PUT /api/v1/projects/{id}",
-				"delete_project": "DELETE /api/v1/projects/{id}",
-				"submit_contact": "POST /api/v1/contact",
-				"list_contact": "GET /api/v1/contact"
+				"chat_stream": "GET/POST /api/v1/chat/stream"
 			}
 		}`))
 	})
 
 	// API v1 routes
 	mux.HandleFunc("GET /api/v1/health", healthH.Check)
-
 	// Projects
 	mux.HandleFunc("GET /api/v1/projects", projectH.List)
-
-	// Contact messages
-	mux.HandleFunc("POST /api/v1/contact", contactH.Create)
-	mux.HandleFunc("GET /api/v1/contact", contactH.List)
+	// AI Chatbot SSE Streaming
+	mux.HandleFunc("GET /api/v1/chat/stream", chatH.Stream)
+	mux.HandleFunc("POST /api/v1/chat/stream", chatH.Stream)
 
 	// Wrap mux with global middleware chain
 	var wrappedHandler http.Handler = mux
